@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 //import PointsModel from '../model/points-model.js';
 import {render, RenderPosition, remove} from '../framework/render.js';
-import NewPointView from '../view/new-point-view.js';
+//import NewPointView from '../view/new-point-view.js';
 import PointListView from '../view/point-list-view.js';
 import SortView from '../view/sort-view.js';
 import NoPointsView from '../view/no-points-view.js';
@@ -9,8 +9,10 @@ import NoPointsView from '../view/no-points-view.js';
 import PointPresenter from './point-presenter.js';
 import NewPointPresenter from './new-point-presenter.js';
 
-import {SortType, UpdateType, UserAction} from '../const.js';
+import {SortType, UpdateType, UserAction, FilterType} from '../const.js';
 import { sortByDay, sortByPrice, sortByTime, filterPoints} from '../dayjs-custom.js';
+
+import ButtonView from '../view/button-new-view.js';
 
 export default class PointListPresenter {
 
@@ -22,12 +24,12 @@ export default class PointListPresenter {
   #currentSortType = SortType.DEFAULT;
   #pointPresenter = new Map();
 
-  #NewPointPresenter = null;
+  #newPointPresenter = null;
 
   #sortComponent = null;
   #newPointComponent = null;
   #isButtonDisabled = false;
-  constructor({pointsModel, filterModel}){
+  constructor({pointsModel, filterModel, onNewPointDestroy}){
     //!!
 
     this.#pointsModel = pointsModel;
@@ -35,6 +37,12 @@ export default class PointListPresenter {
 
     this.#pointsModel.addObserver(this.#handleModelEvent);
     this.#filterModel.addObserver(this.#handleModelEvent);
+
+    this.#newPointPresenter = new NewPointPresenter({
+      container: this.#pointListComponent.element,
+      onDataChange: this.#handleViewAction,
+      onDestroy: onNewPointDestroy
+    });
   }
 
   get points() {
@@ -50,10 +58,21 @@ export default class PointListPresenter {
     return this.#pointsModel.points;
   }
 
+  createPoint() {
+    this.#currentSortType = SortType.DEFAULT;
+    this.#filterModel.setFilter(UpdateType.MAJOR, FilterType.ALL);
+    this.#newPointPresenter.init();
+  }
+
 
   #handleModeChange = () => {
-
+    this.#newPointPresenter.destroy();
     this.#pointPresenter.forEach((presenter) => presenter.resetView());
+
+  };
+
+  #handleNewPointModeChange = () => {
+    this.#newPointPresenter.resetView();
   };
 
   #renderPoint = (point) => {
@@ -65,13 +84,14 @@ export default class PointListPresenter {
   };
 
   #renderNewPoint = (point) => {
-    const newPointPresenter = new NewPointPresenter(this.#pointListComponent.element, this.#handleViewAction, this.#handleModeChange);
+    const newPointPresenter = new NewPointPresenter(this.#pointListComponent.element, this.#handleViewAction, this.#handleNewPointModeChange);
 
-    //newPointPresenter.init(point);
+    newPointPresenter.init(point);
     //this.#pointPresenter.set(point.id, pointPresenter);
   };
 
   #clearPointsList = () => {
+    this.#newPointPresenter.destroy();
     this.#pointPresenter.forEach((presenter) => presenter.destroy());
     this.#pointPresenter.clear();
     if (this.#noPointsView) {
@@ -102,7 +122,6 @@ export default class PointListPresenter {
   //----------------------------------------------------------------------
 
 
-
   #noPointsView = null;
 
   #renderNoPoints = (reason) => {
@@ -128,16 +147,30 @@ export default class PointListPresenter {
     });
   };
 
-  init = (pointListContainer) => {
+  init = (pointListContainer, buttonContainer) => {
     this.#pointListContainer = pointListContainer;
 
     this.#renderSort();
-    this.#renderNewPoint();
+    this.#renderNewPoint(this.points[0]);
 
     this.#renderPointList();
     this.#renderAllPoints(this.points);
 
+    const newPointButtonComponent = new ButtonView({
+      onClick: this.#handleNewPointButtonClick
+    });
 
+
+    render(newPointButtonComponent, buttonContainer);
+  };
+
+  #handleNewPointFormClose = ()=> {
+    this.newPointButtonComponent.element.disabled = false;
+  };
+
+  #handleNewPointButtonClick = ()=> {
+    this.pointListPresenter.createPoint();
+    this.newPointButtonComponent.element.disabled = true;
   };
 
   #handleViewAction = (actionType, updateType, update) => {

@@ -1,6 +1,6 @@
 import {render} from '../render.js';
 import FilterView from '../view/filter-view.js';
-import {FilterType, UpdateType} from '../const.js';
+import {UpdateType} from '../const.js';
 //import { filterPoints } from '../dayjs-custom.js';
 import { replace } from '../framework/render.js';
 
@@ -9,7 +9,7 @@ export default class FilterPresenter {
 
   #filterContainer = null;
   #filterComponent = null;
-  #currentFilterType = FilterType.EVERYTHING;
+  //#currentFilterType = FilterType.EVERYTHING;
 
   #filterModel = null;
   #pointsModel = null;
@@ -49,7 +49,6 @@ export default class FilterPresenter {
     if (this.#filterModel.filter === filterType) {
       return;
     }
-    console.log('trouble',this.#filterModel);
     this.#filterModel.setFilter(UpdateType.MAJOR, filterType);
     // фильтрация
     //this.#clearPointsList({resetRenderedTaskCount: true});

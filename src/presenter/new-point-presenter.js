@@ -1,106 +1,68 @@
-import {UserAction, UpdateType} from '../const.js';
-import {render, replace, remove} from '../framework/render.js';
+import {remove, render, RenderPosition} from '../framework/render.js';
 import EditPointView from '../view/edit-point-view.js';
+import {nanoid} from 'nanoid';
+import {UserAction, UpdateType} from '../const.js';
 
-import OffersModel from '../model/offers-model.js';
-
-import DestinationsModel from '../model/destinations-model.js';
 export default class NewPointPresenter {
-  #pointListComponent = null;
-  //#pointComponent = null;
-  #editPointComponent = null;
-  #point = null;
-  //#pointListContainer = null;
-  #offersList = null;
-  #offersModel = new OffersModel();
-  #changeData = null;
+  #container = null;
+  #handleDataChange = null;
+  #handleDestroy = null;
 
-  #changeMode = null;
-  #isInEditMode = false;
+  #pointEditComponent = null;
 
-  #destinationsList = null;
-  #destinationsModel = new DestinationsModel();
-  constructor(pointListComponent, changeData, changeMode){
-    this.#pointListComponent = pointListComponent;
-    this.#changeData = changeData;
-    this.#changeMode = changeMode;
-
-
+  constructor({container, onDataChange, onDestroy}) {
+    this.#container = container;
+    this.#handleDataChange = onDataChange;
+    this.#handleDestroy = onDestroy;
   }
 
-  init = (point) => {
-    this.#point = point;
-    this.#offersList = [...this.#offersModel.offers];
-    this.#destinationsList = [...this.#destinationsModel.destinations];
-
-    //const prevEditPointComponent = this.#editPointComponent;
-
-
-    this.#editPointComponent = new EditPointView(point, this.#offersList, this.#destinationsList, true);
-
-    this.#editPointComponent.setFormSubmitHandler(this.#handleFormSubmit);
-
-    this.#editPointComponent.setFormResetHandler(this.#handleFormReset);
-
-
-    //переиспользование
-    /*if (prevEditPointComponent === null) {
-      render(this.#editPointComponent, this.#pointListComponent);
+  init() {
+    if (this.#pointEditComponent !== null) {
       return;
-    }*/
-
-    render(this.#editPointComponent,this.#pointListComponent);
-
-    if (this.#isInEditMode) {
-      replace(this.#editPointComponent, prevEditPointComponent);
-    }
-  };
-
-  destroy = () => {
-    remove(this.#editPointComponent);
-  };
-
-  resetView = () => {
-    if (this.#isInEditMode) {
-      this.#editPointComponent.reset(this.#point);
     }
 
-  };
+    this.#pointEditComponent = new EditPointView(
+      //onFormSubmit: this.#handleFormSubmit,
+      //onDeleteClick: this.#handleDeleteClick
+      point, offers, destinations, true);
 
+    render(this.#pointEditComponent, this.#container, RenderPosition.AFTERBEGIN);
 
-  #removeEditPoint = () => {
-    remove(this.#editPointComponent);
-  };
+    document.addEventListener('keydown', this.#escKeyDownHandler);
+  }
 
-  #onEscKeyDown = (evt) => {
-    if (evt.key === 'Escape') {
-      evt.preventDefault();
-      document.removeEventListener('keydown', this.#onEscKeyDown);
-      remove(this.#editPointComponent);
+  destroy() {
+    if (this.#pointEditComponent === null) {
+      return;
     }
-  };
 
+    this.#handleDestroy();
+
+    remove(this.#pointEditComponent);
+    this.#pointEditComponent = null;
+
+    document.removeEventListener('keydown', this.#escKeyDownHandler);
+  }
 
   #handleFormSubmit = (point) => {
-    this.#changeData(
+    this.#handleDataChange(
       UserAction.ADD,
-      UpdateType.MAJOR,
-      point,
+      UpdateType.MINOR,
+      // Пока у нас нет сервера, который бы после сохранения
+      // выдывал честный id задачи, нам нужно позаботиться об этом самим
+      {id: nanoid(), ...point},
     );
-    //this.#replaceEditWithStandard();
-    remove(this.#editPointComponent);
+    this.destroy();
   };
 
-  #handleFormReset = (point) => {
-    console.log('reset');
-    //this.#replaceEditWithStandard();
-    remove(this.#editPointComponent);
+  #handleDeleteClick = () => {
+    this.destroy();
   };
 
-  reset = (point) => {
-    this.updateElement(
-      EditPointView.parse(point),
-    );
+  #escKeyDownHandler = (evt) => {
+    if (evt.key === 'Escape' || evt.key === 'Esc') {
+      evt.preventDefault();
+      this.destroy();
+    }
   };
-
 }
